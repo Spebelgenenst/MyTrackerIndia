@@ -1,8 +1,10 @@
 from flask import Flask, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_apscheduler import APScheduler
+
 import os
 import requests
+from datetime import datetime
 
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
@@ -38,7 +40,9 @@ class user_stats(db.Model):
 class user_balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     balance = db.Column(db.Integer, unique=False, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user_stats.id"), nullable=False)
+
 
 class user_search(FlaskForm):
     user = StringField("user", validators=[InputRequired()])
