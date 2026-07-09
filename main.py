@@ -113,17 +113,52 @@ def get_credentials():
 
 @scheduler.task("interval", minutes=5)
 def collect_data():
-    # get data from leaderboard and put it in da list
-    # get data from credentials and put it in da list
+    users = []
+    response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
+    
+    for user in response.get("leaderboard"):
+        users.append(user)
 
-    # for in loop
-    # add balance to history and update balance in user_stats
-    pass
+    credentials = user_credentials.query.all()
+    for user in credentials:
+        headers = {"Authorization": f"Bearer {user.session_id}"}
+        url = "/user/info"
+
+        response = requests.get(BASE_URL + url, headers=headers).json().get("data")
+
+        user_entry = {
+            "username": response.get("username"),
+            "balance": response.get("balance")
+        }
+
+        users.append(user_entry)
+
+    for u in users:
+        user = user_stats.query.filter(user_stats.name == u["username"]).first()
+
+        if not user:
+            user = user_stats(
+                name=u["username"],
+                balance=u["balance"]
+            )
+
+            db.session.add(user)
+            db.session.commit()
+
+        new_balance = user_balance(
+            balance=u["balance"],
+            user_id=user.id
+        )
+
+        db.session.add(new_balance) # add balance to history
+        user.balance = u["balance"] # change balance in user stats
+        db.session.commit()
 
 
 if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
+        #collect_data()
     app.run(debug=True)
 
 
