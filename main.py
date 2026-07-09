@@ -36,6 +36,7 @@ class user_stats(db.Model):
     name = db.Column(db.String(64), unique=True, nullable=False)
     balance = db.Column(db.Integer, nullable=False, unique=False)
     balance_history = db.relationship("user_balance", backref="user_stats", lazy=True, cascade="all, delete-orphan")
+    created_at = db.Column(db.String(32), nullable=True, unique=False)
 
 class user_balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -101,15 +102,28 @@ def get_credentials():
     if not response.get("success"):
         return render_template("sign-up.html", sign_up=form, message=response.get("message"))
 
+    session_id = response.get("data").get("session_id")
+
+    headers = {"Authorization": f"Bearer {session_id}"}
+    url = "/user/info"
+    response = requests.get(BASE_URL + url, headers=headers).json().get("data")
+
     new_credentials = user_credentials(
-        name=form.name.data,
-        session_id=response.get("data").get("session_id")
+        name=response.get("username"),
+        session_id=session_id
+    )
+
+    new_stat = user_stats(
+        name=response.get("username"),
+        balance=response.get("balance"),
+        created_at=response.get("created")
     )
 
     db.session.add(new_credentials)
+    db.session.add(new_stat)
     db.session.commit()
 
-    return redirect(f"/user/{form.name.data}")
+    return redirect(f"/user/{response.get("username")}")
 
 @scheduler.task("interval", minutes=5)
 def collect_data():
@@ -160,6 +174,3 @@ if __name__ == "__main__":
         db.create_all()
         #collect_data()
     app.run(debug=True)
-
-
-
