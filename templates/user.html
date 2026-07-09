@@ -5,10 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTrackerIndia</title>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0"></script>
 <body>
     <h1>{{ user.name }}</h1>
-    <p>balance: {{ user.balance }}</p>
+    <p>balance: {{ user.balance/100 }} inr</p>
     <p>created at: {{ user.created_at if user.created_at else "Unknown" }}</p>
-    {{ user.balance_history }}
+
+    <table>
+        {% for balance in user.balance_history %}
+            <tr>
+                <td>{{ balance.timestamp }}</td>
+                <td>{{ balance.balance/100 }} inr</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <canvas id="balance_history" style="width:100%;max-width:700px"></canvas>
+
+    <script>
+        const xyValues = [
+            {% for balance in user.balance_history %}
+                {x:{{ balance.id }}, y:{{ balance.balance }}},
+            {% endfor %}
+        ];
+
+        const ctx = document.getElementById('balance_history');
+
+        new Chart(ctx, {
+        type: "scatter",
+        data: {
+            datasets: [{
+            pointRadius: 4,
+            pointBackgroundColor: "rgb(0,0,255)",
+            data: xyValues
+            }]
+        },
+        options: {
+            plugins: {
+            legend: {display:false},
+            title: {
+                display: true,
+                text: "Balance History",
+                font: {size:16}
+            }
+            }
+        }
+        });
+    </script>
 </body>
 </html>
