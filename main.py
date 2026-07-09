@@ -46,7 +46,7 @@ class user_balance(db.Model):
 
 
 class user_search(FlaskForm):
-    user = StringField("user", validators=[InputRequired()])
+    user = StringField("user")
 
 class sign_up(FlaskForm):
     name = StringField("name", validators=[InputRequired()])
@@ -63,15 +63,12 @@ def search():
     search_form = user_search()
     search = request.args.get("user", None)
 
-    if not search:
-        return redirect(url_for('index'))
+    users = user_stats.query.filter(user_stats.name.contains(search))
 
-    user = user_stats.query.filter(user_stats.name == search).first()
-
-    if not user:
+    if not users:
         return render_template("message.html", message="User not found...", search=search_form)
 
-    return render_template("search.html", user=user, search=search_form)
+    return render_template("search.html", users=users, search=search_form)
 
 @app.route('/user/<u>')
 def get_user(u):

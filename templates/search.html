@@ -10,10 +10,12 @@
         {{ search.user }}
         <button type="submit" title="submit">submit</button>
     </form>
-    <h3>
-        <a href="/user/{{ user.name }}">{{ user.name }}</a>
-        Balance: {{ user.balance }}
-    </h3>
+    {% for user in users %}
+        <h3>
+            <a href="/user/{{ user.name }}">{{ user.name }}</a>
+            Balance: {{ user.balance }}
+        </h3>
+    {% endfor %}
     <a href="/sign_up">Sign Up</a> <a herf="/">Return Home</a>
 </body>
 </html>
