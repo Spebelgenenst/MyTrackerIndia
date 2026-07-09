@@ -7,5 +7,12 @@
 </head>
 <body>
     {{ message }}
+    <form action="/sign_up" method="post">
+        {{ sign_up.csrf_token }}
+        {{ sign_up.name.label }} {{ sign_up.name }}
+        {{ sign_up.password.label }} {{ sign_up.password }}
+        {{ sign_up.auth_code.label }} {{ sign_up.auth_code }}
+        <button type="submit" title="submit">submit</button>
+    </form>
 </body>
 </html>

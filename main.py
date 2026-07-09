@@ -7,7 +7,7 @@ import requests
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
 from wtforms import StringField, PasswordField
-from wtforms.validators import InputRequired
+from wtforms.validators import InputRequired, Optional
 
 app = Flask(__name__)
 
@@ -27,7 +27,7 @@ BASE_URL = 'https://mypayindia.com/api/v2'
 class user_credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
-    password = db.Column(db.String(64), unique=False, nullable=False)
+    session_id = db.Column(db.String(32), unique=True, nullable=False)
 
 class user_stats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +46,7 @@ class user_search(FlaskForm):
 class sign_up(FlaskForm):
     name = StringField("name", validators=[InputRequired()])
     password = PasswordField("password", validators=[InputRequired()])
+    auth_code = StringField("auth code", validators=[Optional()])
 
 @app.route('/')
 def index():
@@ -75,12 +76,11 @@ def get_user(u):
     return render_template("user.html")
 
 @app.route('/sign_up', methods=['GET', 'POST'])
-def sign_up():
+def get_credentials():
     form = sign_up()
 
     if request.method == 'GET':
         return render_template("sign-up.html", sign_up=form)
-
 
     if not form.validate_on_submit():
         return render_template("sign-up.html", sign_up=form, message="You probably made something wrong! Try again! :3")
@@ -88,7 +88,8 @@ def sign_up():
     url = '/auth/login'
     data = {
         'username': form.name.data,
-        'password': form.password.data
+        'password': form.password.data,
+        'totp_code': form.auth_code.data
     }
 
     response = requests.post(BASE_URL + url, json = data).json()
@@ -98,8 +99,9 @@ def sign_up():
 
     new_credentials = user_credentials(
         name=form.name.data,
-        password=form.password.data
+        session_id=response.get("data").get("session_id")
     )
+
     db.session.add(new_credentials)
     db.session.commit()
 
