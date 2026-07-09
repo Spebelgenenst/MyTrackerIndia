@@ -25,7 +25,7 @@
     <script>
         const xyValues = [
             {% for balance in user.balance_history %}
-                {x:{{ balance.id }}, y:{{ balance.balance }}},
+                {x:{{ balance.id }}, y:{{ balance.balance/100 }}},
             {% endfor %}
         ];
 
