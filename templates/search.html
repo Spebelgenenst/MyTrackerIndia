@@ -13,7 +13,7 @@
     {% for user in users %}
         <h3>
             <a href="/user/{{ user.name }}">{{ user.name }}</a>
-            Balance: {{ user.balance }}
+            Balance: {{ user.balance/100 }} inr
         </h3>
     {% endfor %}
     <a href="/sign_up">Sign Up</a> <a herf="/">Return Home</a>
