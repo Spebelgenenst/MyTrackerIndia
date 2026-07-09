@@ -75,7 +75,7 @@ def get_user(u):
     search_form = user_search()
     user = user_stats.query.filter(user_stats.name == u).first()
 
-    return render_template("user.html")
+    return render_template("user.html", user=user)
 
 @app.route('/sign_up', methods=['GET', 'POST'])
 def get_credentials():

@@ -6,6 +6,9 @@
     <title>MyTrackerIndia</title>
 </head>
 <body>
-    
+    <h1>{{ user.name }}</h1>
+    <p>balance: {{ user.balance }}</p>
+    <p>created at: {{ user.created_at if user.created_at else "Unknown" }}</p>
+    {{ user.balance_history }}
 </body>
 </html>
