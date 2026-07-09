@@ -75,6 +75,9 @@ def get_user(u):
     search_form = user_search()
     user = user_stats.query.filter(user_stats.name == u).first()
 
+    if not user:
+        return render_template("message.html", message="User not found...", search=search_form)
+
     return render_template("user.html", user=user)
 
 @app.route('/sign_up', methods=['GET', 'POST'])
@@ -170,5 +173,4 @@ def collect_data():
 if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
-        #collect_data()
     app.run(debug=True)
