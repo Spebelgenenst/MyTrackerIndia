@@ -130,6 +130,10 @@ def collect_data():
     with app.app_context():
         users = []
         response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
+
+        if not response.get("sucess"):
+            if response.get("error") == 9003:
+                return
         
         for user in response.get("leaderboard"):
             users.append(user)
@@ -139,11 +143,21 @@ def collect_data():
             headers = {"Authorization": f"Bearer {user.session_id}"}
             url = "/user/info"
 
-            response = requests.get(BASE_URL + url, headers=headers).json().get("data")
+            response = requests.get(BASE_URL + url, headers=headers).json()
+            data = response.get("data")
+
+            if not response.get("sucess"):
+                if response.get("error") == 1001:
+                    user.delete()
+                    db.session.commit()
+                    continue
+
+                if response.get("error") == 9003:
+                    return
 
             user_entry = {
-                "username": response.get("username"),
-                "balance": response.get("balance")
+                "username": data.get("username"),
+                "balance": data.get("balance")
             }
 
             users.append(user_entry)
