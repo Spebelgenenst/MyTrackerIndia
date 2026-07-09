@@ -1,2 +1,2 @@
-# MyPayIndia-Tracker
+# MyTrackerIndia
 Track diffrent MyPayIndia statistics!
