@@ -5,6 +5,7 @@ from flask_apscheduler import APScheduler
 import os
 import requests
 from datetime import datetime
+import secrets
 
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
@@ -13,7 +14,7 @@ from wtforms.validators import InputRequired, Optional
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = "a secret key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sqlite.db" #database
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # Avoids a warning
@@ -85,7 +86,7 @@ def get_credentials():
     form = sign_up()
 
     if request.method == 'GET':
-        return render_template("sign-up.html", sign_up=form)
+        return render_template("sign-up.html", sign_up=form, message="You are using http, wich is not secure!" if request.scheme == 'http' else "")
 
     if not form.validate_on_submit():
         return render_template("sign-up.html", sign_up=form, message="You probably made something wrong! Try again! :3")
@@ -97,7 +98,7 @@ def get_credentials():
         'totp_code': form.auth_code.data
     }
 
-    response = requests.post(BASE_URL + url, json = data).json()
+    response = requests.post(BASE_URL + url, json = data, timeout=10).json()
 
     if not response.get("success"):
         return render_template("sign-up.html", sign_up=form, message=response.get("message"))
@@ -106,7 +107,7 @@ def get_credentials():
 
     headers = {"Authorization": f"Bearer {session_id}"}
     url = "/user/info"
-    response = requests.get(BASE_URL + url, headers=headers).json().get("data")
+    response = requests.get(BASE_URL + url, headers=headers, timeout=10).json().get("data")
 
     new_credentials = user_credentials(
         name=response.get("username"),
@@ -129,7 +130,7 @@ def get_credentials():
 def collect_data():
     with app.app_context():
         users = []
-        response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
+        response = requests.get(BASE_URL + "/info/leaderboard", timeout=10).json().get("data")
 
         if not response.get("sucess"):
             if response.get("error") == 9003:
@@ -143,7 +144,7 @@ def collect_data():
             headers = {"Authorization": f"Bearer {user.session_id}"}
             url = "/user/info"
 
-            response = requests.get(BASE_URL + url, headers=headers).json()
+            response = requests.get(BASE_URL + url, headers=headers, timeout=10).json()
             data = response.get("data")
 
             if not response.get("sucess"):
