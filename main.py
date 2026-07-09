@@ -124,46 +124,47 @@ def get_credentials():
 
 @scheduler.task("interval", minutes=5)
 def collect_data():
-    users = []
-    response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
-    
-    for user in response.get("leaderboard"):
-        users.append(user)
+    with app.app_context():
+        users = []
+        response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
+        
+        for user in response.get("leaderboard"):
+            users.append(user)
 
-    credentials = user_credentials.query.all()
-    for user in credentials:
-        headers = {"Authorization": f"Bearer {user.session_id}"}
-        url = "/user/info"
+        credentials = user_credentials.query.all()
+        for user in credentials:
+            headers = {"Authorization": f"Bearer {user.session_id}"}
+            url = "/user/info"
 
-        response = requests.get(BASE_URL + url, headers=headers).json().get("data")
+            response = requests.get(BASE_URL + url, headers=headers).json().get("data")
 
-        user_entry = {
-            "username": response.get("username"),
-            "balance": response.get("balance")
-        }
+            user_entry = {
+                "username": response.get("username"),
+                "balance": response.get("balance")
+            }
 
-        users.append(user_entry)
+            users.append(user_entry)
 
-    for u in users:
-        user = user_stats.query.filter(user_stats.name == u["username"]).first()
+        for u in users:
+            user = user_stats.query.filter(user_stats.name == u["username"]).first()
 
-        if not user:
-            user = user_stats(
-                name=u["username"],
-                balance=u["balance"]
+            if not user:
+                user = user_stats(
+                    name=u["username"],
+                    balance=u["balance"]
+                )
+
+                db.session.add(user)
+                db.session.commit()
+
+            new_balance = user_balance(
+                balance=u["balance"],
+                user_id=user.id
             )
 
-            db.session.add(user)
+            db.session.add(new_balance) # add balance to history
+            user.balance = u["balance"] # change balance in user stats
             db.session.commit()
-
-        new_balance = user_balance(
-            balance=u["balance"],
-            user_id=user.id
-        )
-
-        db.session.add(new_balance) # add balance to history
-        user.balance = u["balance"] # change balance in user stats
-        db.session.commit()
 
 
 if __name__ == "__main__":
