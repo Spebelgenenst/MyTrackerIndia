@@ -36,7 +36,7 @@ class user_stats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
     balance = db.Column(db.Integer, nullable=False, unique=False)
-    balance_history = db.relationship("user_balance", backref="user_stats", cascade="all, delete-orphan", uselist=False)
+    balance_history = db.relationship("user_balance", backref="user_stats", cascade="all, delete-orphan")
     created_at = db.Column(db.String(32), nullable=True, unique=False)
     money_made_in_24_hours = db.Column(db.Integer, nullable=True, unique=False)
 
@@ -197,9 +197,12 @@ def collect_data():
             if user.balance_history:
                 # calculate the money made in 2 4hours
                 cutoff = datetime.now() - timedelta(days=1)
-                balance_24h_ago = user.balance_history.query.filter(user_balance.timestamp > cutoff).first() 
+                balance_24h_ago = user_balance.query.filter(user_balance.user_id == user.id and user_balance.timestamp > cutoff).first() 
                 if balance_24h_ago:
                     user.money_made_in_24_hours = u["balance"] - balance_24h_ago.balance
+
+            else:
+                user.money_made_in_24_hours = 0
 
             db.session.add(new_balance) # add balance to history
             user.balance = u["balance"] # change balance in user stats
