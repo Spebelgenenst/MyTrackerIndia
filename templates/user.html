@@ -9,7 +9,7 @@
 <body>
     <h1>{{ user.name }}</h1>
     <p>balance: {{ user.balance/100 }} inr</p>
-    <p>created at: {{ user.created_at if user.created_at else "Unknown" }}</p>
+    <p>acc created at: {{ user.created_at if user.created_at else "Unknown" }}</p>
 
     <table>
         {% for balance in user.balance_history %}

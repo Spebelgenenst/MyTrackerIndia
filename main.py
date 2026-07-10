@@ -139,7 +139,7 @@ def get_credentials():
 
     return redirect(f"/user/{response.get("username")}")
 
-@scheduler.task("interval", minutes=1)
+@scheduler.task("interval", minutes=10)
 def collect_data():
     with app.app_context():
         users = []
@@ -213,4 +213,4 @@ if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
     #collect_data()
-    app.run(debug=True)
+    app.run(debug=False)
