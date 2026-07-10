@@ -82,6 +82,18 @@ def get_user(u):
 
     return render_template("user.html", user=user)
 
+@app.route('/leaderboard/total_money')
+def leaderboard_total_money():
+    users = user_stats.query.order_by(user_stats.balance.desc())
+
+    return render_template("leaderboard.html", users=users, sort="total")
+
+@app.route('/leaderboard/made_in_24h')
+def leaderboard_in_24h():
+    users = user_stats.query.order_by(user_stats.money_made_in_24_hours.desc())
+
+    return render_template("leaderboard.html", users=users, sort="in_24h")
+
 @app.route('/sign_up', methods=['GET', 'POST'])
 def get_credentials():
     form = sign_up()
