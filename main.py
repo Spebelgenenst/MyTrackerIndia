@@ -149,7 +149,7 @@ def collect_data():
 
             if not response.get("sucess"):
                 if response.get("error") == 1001:
-                    user.delete()
+                    db.session.delete(user)
                     db.session.commit()
                     continue
 
