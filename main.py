@@ -4,7 +4,7 @@ from flask_apscheduler import APScheduler
 
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 
 from flask_wtf import FlaskForm
@@ -36,8 +36,9 @@ class user_stats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
     balance = db.Column(db.Integer, nullable=False, unique=False)
-    balance_history = db.relationship("user_balance", backref="user_stats", lazy=True, cascade="all, delete-orphan")
+    balance_history = db.relationship("user_balance", backref="user_stats", cascade="all, delete-orphan", uselist=False)
     created_at = db.Column(db.String(32), nullable=True, unique=False)
+    money_made_in_24_hours = db.Column(db.Integer, nullable=True, unique=False)
 
 class user_balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -126,7 +127,7 @@ def get_credentials():
 
     return redirect(f"/user/{response.get("username")}")
 
-@scheduler.task("interval", minutes=5)
+@scheduler.task("interval", minutes=1)
 def collect_data():
     with app.app_context():
         users = []
@@ -175,10 +176,18 @@ def collect_data():
                 db.session.add(user)
                 db.session.commit()
 
+
             new_balance = user_balance(
                 balance=u["balance"],
                 user_id=user.id
             )
+
+            if user.balance_history:
+                # calculate the money made in 2 4hours
+                cutoff = datetime.now() - timedelta(days=1)
+                balance_24h_ago = user.balance_history.query.filter(user_balance.timestamp > cutoff).first() 
+                if balance_24h_ago:
+                    user.money_made_in_24_hours = u["balance"] - balance_24h_ago.balance
 
             db.session.add(new_balance) # add balance to history
             user.balance = u["balance"] # change balance in user stats
@@ -188,4 +197,5 @@ def collect_data():
 if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
+    #collect_data()
     app.run(debug=True)
