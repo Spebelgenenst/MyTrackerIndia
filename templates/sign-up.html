@@ -1,20 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
-<body>
-    {{ message }}
-    <form action="/sign_up" method="post">
-        {{ sign_up.csrf_token }}
-        {{ sign_up.name.label }} {{ sign_up.name }}
-        {{ sign_up.password.label }} {{ sign_up.password }}
-        {{ sign_up.auth_code.label }} {{ sign_up.auth_code }}
-        <button type="submit" title="submit">submit</button>
-    </form>
-    note: if you want to remove access to your account, you just need to invalidate every session from an Unknown OS. 
-    <a href="https://mypayindia.com/accountservices/accsettings" >MyPayIndia settings</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}MyTrackerIndia · Sign up{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 24px;">
+    <div class="section-head">
+        <div class="section-kicker">Sign up</div>
+        <h1 class="section-title">Connect your MyPayIndia access to the tracker.</h1>
+        <p class="section-copy">Sign in so MyTrackerIndia can automatically import your balance, history, and future updates.</p>
+    </div>
+
+    <div class="grid-two">
+        <div class="form-card">
+            <div class="eyebrow">Welcome back</div>
+            <h2 class="message-title" style="text-align:left;">Activate access</h2>
+            {% if message %}
+                <div class="note-box">{{ message }}</div>
+            {% endif %}
+
+            <form action="/sign_up" method="post" class="form-grid">
+                {{ sign_up.csrf_token }}
+                <div class="field">
+                    <label for="name">MyPayIndia username</label>
+                    {{ sign_up.name(placeholder='Account name') }}
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    {{ sign_up.password(placeholder='MyPayIndia password') }}
+                </div>
+                <div class="field">
+                    <label for="auth_code">2FA code</label>
+                    {{ sign_up.auth_code(placeholder='If two-factor is enabled') }}
+                </div>
+                <button class="button button-light" type="submit">Connect account</button>
+            </form>
+
+            <p class="helper-text">If you want to remove access, deactivate all active sessions in the MyPayIndia settings.</p>
+            <a class="back-link" href="https://mypayindia.com/accountservices/accsettings" target="_blank" rel="noreferrer">Open MyPayIndia settings</a>
+        </div>
+
+        <aside class="panel">
+            <div class="feature-kicker">After sync</div>
+            <h2 class="feature-title">Connect the account, load data, show history.</h2>
+            <p class="panel-meta">The flow is intentionally simple: sign in first, then the profile, history, and current balance appear.</p>
+            <div class="timeline-list" style="margin-top: 22px;">
+                <div class="timeline-item">
+                    <div>
+                        <strong>1. Verify access</strong>
+                        <span>Username, password, and 2FA</span>
+                    </div>
+                    <div class="timeline-balance">1</div>
+                </div>
+                <div class="timeline-item">
+                    <div>
+                        <strong>2. Sync data</strong>
+                        <span>Import balance and metadata</span>
+                    </div>
+                    <div class="timeline-balance">2</div>
+                </div>
+                <div class="timeline-item">
+                    <div>
+                        <strong>3. View history</strong>
+                        <span>Open the profile with history and chart</span>
+                    </div>
+                    <div class="timeline-balance">3</div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+{% endblock %}

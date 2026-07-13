@@ -1,16 +1,151 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
-<body>
-    <div>Welcome to MyTrackerIndia! Track <a href="mypayindia.com">MyPayIndia</a> statistics, like balance history and maybe more!</div>
-    <a href="/sign_up">Sign Up</a>
-    <form action="/search" method="GET">
-        {{ search.user }}
-        <button type="submit" title="submit">submit</button>
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}MyTrackerIndia · Track financial data in style{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0"></script>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-inner">
+        <h1 class="hero-title">Your MyPayIndia balance, live and at a glance.</h1>
+        <p class="hero-copy">
+            MyTrackerIndia reads balances and history from your connected accounts and presents them in a calm interface.
+            No distractions, only the numbers that matter right now.
+        </p>
+        <div class="hero-actions">
+            <a class="button button-light" href="/sign_up">Connect account</a>
+            <a class="button button-dark" href="/search">Find users</a>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-head">
+          <div class="section-kicker">Overview</div>
+          <h2 class="section-title">What the user sees.</h2>
+        <p class="section-copy">
+              An instant overview of your account balance history and status. Connect your MyPayIndia accounts, search for users, check their data, and open profiles directly if needed.
+        </p>
+    </div>
+
+    <div class="featured-grid">
+        <article class="feature-card large">
+            <div>
+                <div class="feature-kicker">Tracker</div>
+                <h3 class="feature-title">Balance, history, and account status in one view.</h3>
+            </div>
+            <div class="feature-copy">
+                The home page is the entry point to real account data: connect, search, check, and open the profile directly when needed.
+            </div>
+        </article>
+
+        <article class="chart-panel">
+            <div class="feature-kicker">Trend</div>
+            <h3 class="feature-title">Balance trends for active users.</h3>
+            <p class="feature-copy">Each point represents a stored history entry. The lines show how the accounts have recently developed.</p>
+            <div class="chart-shell chart-shell-compact">
+                <canvas id="development_chart"></canvas>
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-head">
+        <div class="section-kicker">Active now</div>
+        <h2 class="section-title">Random users from your data set.</h2>
+        <p class="section-copy">This selection changes on every load and shows which profiles are currently available in the tracker.</p>
+    </div>
+
+    <div class="result-grid live-grid">
+        {% for user in random_users %}
+            <article class="result-card live-card">
+                <div>
+                    <div class="result-meta">Live profile</div>
+                    <h3 class="result-name"><a href="/user/{{ user.name }}">{{ user.name }}</a></h3>
+                    <div class="result-balance">{{ '%.2f'|format(user.balance / 100) }} INR</div>
+                    <div class="result-meta">{{ user.balance_history|length }} history points</div>
+                </div>
+                <a class="back-link" href="/user/{{ user.name }}">Open profile</a>
+            </article>
+        {% else %}
+            <div class="message-card">
+                <h2 class="message-title">No live data yet.</h2>
+                <p class="message-copy">As soon as an account is connected, users will appear here.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="section">
+    <div class="stats-grid">
+        <article class="stat-card">
+            <div class="stat-label">Quick search</div>
+            <div class="stat-value">Profile</div>
+            <div class="stat-note">Enter a name, view matches, and verify data.</div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-label">Recent activity</div>
+            <div class="stat-value">History</div>
+            <div class="stat-note">Balance history stays traceable with every sync.</div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-label">Accounts</div>
+            <div class="stat-value">Sync</div>
+            <div class="stat-note">Connected MyPayIndia accounts are kept up to date.</div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value">Clear</div>
+            <div class="stat-note">Missing users and API issues are explained clearly.</div>
+        </article>
+    </div>
+</section>
+
+<script>
+    const developmentCanvas = document.getElementById('development_chart');
+
+    new Chart(developmentCanvas, {
+        type: 'line',
+        data: {
+            datasets: {{ development_chart | tojson }}
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(245, 242, 235, 0.65)' },
+                    title: {
+                        display: true,
+                        text: 'Recent history points',
+                        color: '#f5f2eb'
+                    }
+                },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: {
+                        color: 'rgba(245, 242, 235, 0.65)',
+                        callback: value => (value / 100).toFixed(2) + ' INR'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#f5f2eb' }
+                },
+                title: {
+                    display: true,
+                    text: 'User trend',
+                    color: '#f5f2eb',
+                    font: { family: 'Manrope', size: 16, weight: '700' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

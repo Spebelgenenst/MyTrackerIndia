@@ -1,56 +1,224 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
+{% extends "base.html" %}
+
+{% block title %}MyTrackerIndia · {{ user.name }}{% endblock %}
+
+{% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0"></script>
-<body>
-    <h1>{{ user.name }}</h1>
-    <p>balance: {{ user.balance/100 }} inr</p>
-    <p>created at: {{ user.created_at if user.created_at else "Unknown" }}</p>
+{% endblock %}
 
-    <table>
-        {% for balance in user.balance_history %}
-            <tr>
-                <td>{{ balance.timestamp }}</td>
-                <td>{{ balance.balance/100 }} inr</td>
-            </tr>
-        {% endfor %}
-    </table>
+{% block content %}
+<section class="section" style="padding-top: 24px;">
+    <div class="profile-hero">
+        <article class="profile-card">
+            <div class="eyebrow">User profile</div>
+            <h1 class="profile-name">{{ user.name }}</h1>
+            <p class="profile-subtitle">Current balance, trend, and the latest movements on this account at a glance.</p>
 
-    <canvas id="balance_history" style="width:100%;max-width:700px"></canvas>
+            <div class="profile-metrics">
+                <div class="metric">
+                    <div class="metric-label">Current balance</div>
+                    <div class="metric-value">{{ '%.2f'|format(user.balance / 100) }} INR</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">First entry</div>
+                    <div class="metric-value" style="font-size: 1.8rem;">{{ user.created_at if user.created_at else 'Unknown' }}</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Data points</div>
+                    <div class="metric-value">{{ user.balance_history|length }}</div>
+                </div>
+            </div>
+        </article>
 
-    <script>
-        const xyValues = [
-            {% for balance in user.balance_history %}
-                {x:{{ balance.id }}, y:{{ balance.balance }}},
+        <aside class="timeline-card">
+            <div class="chart-header-row">
+                <div>
+                    <div class="feature-kicker">History</div>
+                    <h2 class="feature-title">Trend</h2>
+                </div>
+                <div class="chart-toggle" role="tablist" aria-label="Switch chart type">
+                    <button class="chart-toggle-btn is-active" type="button" data-chart-toggle="balance" aria-pressed="true">Balance over time</button>
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="rate" aria-pressed="false">INR/min</button>
+                </div>
+            </div>
+            <p class="panel-meta chart-panel-copy">Use the zoom buttons to choose how many points are shown. The chart switches between balance and change rate.</p>
+            <div class="chart-shell chart-shell-with-controls">
+                <div class="chart-overlay" aria-label="Control zoom">
+                    <button class="map-zoom-btn" type="button" id="zoom_in" aria-label="Zoom in">+</button>
+                    <button class="map-zoom-btn" type="button" id="zoom_out" aria-label="Zoom out">-</button>
+                </div>
+                <canvas id="user_chart"></canvas>
+            </div>
+            <div class="chart-zoom-note">
+                <span class="map-zoom-label">Zoom</span>
+                <span id="chart_zoom_value">{{ history_points|length }} points</span>
+            </div>
+        </aside>
+    </div>
+
+    <div class="section">
+        <div class="section-head">
+            <div class="section-kicker">Timeline</div>
+            <h2 class="section-title">Recent activity.</h2>
+        </div>
+
+        <div class="timeline-list">
+            {% for point in history_points[-6:]|reverse %}
+                <article class="timeline-row">
+                    <div>
+                        <strong>{{ point.timestamp }}</strong>
+                        <span>{{ '%.2f'|format(point.balance / 100) }} INR</span>
+                    </div>
+                    <div class="timeline-row-value">{{ point.delta_per_minute }} INR/min</div>
+                </article>
+            {% else %}
+                <div class="message-card">
+                    <h2 class="message-title">No timeline yet.</h2>
+                    <p class="message-copy">Once history points are available, they will appear here in chronological order.</p>
+                </div>
             {% endfor %}
-        ];
+        </div>
 
-        const ctx = document.getElementById('balance_history');
+        <a class="back-link" href="/search">Back to search</a>
+    </div>
+</section>
 
-        new Chart(ctx, {
-        type: "scatter",
-        data: {
-            datasets: [{
-            pointRadius: 4,
-            pointBackgroundColor: "rgb(0,0,255)",
-            data: xyValues
-            }]
-        },
-        options: {
-            plugins: {
-            legend: {display:false},
-            title: {
-                display: true,
-                text: "Balance History",
-                font: {size:16}
-            }
-            }
+<script>
+    const historyPoints = {{ history_points | tojson }};
+    const chartCanvas = document.getElementById('user_chart');
+    const zoomLabel = document.getElementById('chart_zoom_value');
+    const zoomInButton = document.getElementById('zoom_in');
+    const zoomOutButton = document.getElementById('zoom_out');
+    const chartButtons = document.querySelectorAll('[data-chart-toggle]');
+
+    let activeMode = 'balance';
+    let visibleCount = historyPoints.length;
+    let userChart;
+
+    const minVisible = historyPoints.length <= 2 ? historyPoints.length : 2;
+    const zoomStep = Math.max(1, Math.ceil(historyPoints.length / 4));
+
+    function getVisiblePoints() {
+        return historyPoints.slice(-visibleCount);
+    }
+
+    function buildChartData() {
+        const visible = getVisiblePoints();
+        const labels = visible.map(point => point.timestamp);
+
+        if (activeMode === 'rate') {
+            return {
+                labels,
+                datasets: [{
+                    label: 'INR/min',
+                    data: visible.map(point => point.delta_per_minute),
+                    borderColor: '#ffd08f',
+                    backgroundColor: 'rgba(255, 208, 143, 0.16)',
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    tension: 0.35,
+                    fill: true,
+                }]
+            };
         }
+
+        return {
+            labels,
+            datasets: [{
+                label: 'Balance INR',
+                data: visible.map(point => point.balance_inr),
+                borderColor: '#8fd0ff',
+                backgroundColor: 'rgba(143, 208, 255, 0.18)',
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                tension: 0.35,
+                fill: true,
+            }]
+        };
+    }
+
+    function buildOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(245, 242, 235, 0.65)' }
+                },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: {
+                        color: 'rgba(245, 242, 235, 0.65)',
+                        callback: value => activeMode === 'rate' ? value.toFixed(2) + ' INR/min' : value.toFixed(2) + ' INR'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: activeMode === 'rate' ? 'INR per minute' : 'Balance over time',
+                    color: '#f5f2eb',
+                    font: { family: 'Manrope', size: 16, weight: '700' }
+                }
+            }
+        };
+    }
+
+    function renderChart() {
+        const chartData = buildChartData();
+
+        if (userChart) {
+            userChart.data = chartData;
+            userChart.options = buildOptions();
+            userChart.update();
+            return;
+        }
+
+        userChart = new Chart(chartCanvas, {
+            type: 'line',
+            data: chartData,
+            options: buildOptions(),
         });
-    </script>
-</body>
-</html>
+    }
+
+    function updateZoomLabels() {
+        zoomLabel.textContent = `${visibleCount} points`;
+        zoomOutButton.disabled = visibleCount >= historyPoints.length;
+        zoomInButton.disabled = visibleCount <= minVisible;
+        zoomOutButton.classList.toggle('is-disabled', zoomOutButton.disabled);
+        zoomInButton.classList.toggle('is-disabled', zoomInButton.disabled);
+    }
+
+    function zoomIn() {
+        visibleCount = Math.max(minVisible, visibleCount - zoomStep);
+        updateZoomLabels();
+        renderChart();
+    }
+
+    function zoomOut() {
+        visibleCount = Math.min(historyPoints.length, visibleCount + zoomStep);
+        updateZoomLabels();
+        renderChart();
+    }
+
+    chartButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            activeMode = button.dataset.chartToggle;
+            chartButtons.forEach(entry => {
+                const isActive = entry === button;
+                entry.classList.toggle('is-active', isActive);
+                entry.setAttribute('aria-pressed', String(isActive));
+            });
+            renderChart();
+        });
+    });
+
+    zoomInButton.addEventListener('click', zoomIn);
+    zoomOutButton.addEventListener('click', zoomOut);
+
+    updateZoomLabels();
+    renderChart();
+</script>
+{% endblock %}

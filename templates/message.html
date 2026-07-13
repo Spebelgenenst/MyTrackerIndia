@@ -1,16 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
-<body>
-    <form action="/search" method="GET">
-        {{ search.user }}
-        <button type="submit" title="submit">submit</button>
-    </form>
-    <h1>{{ message }}</h1>
-    <a href="/sign_up">Sign Up</a> <a herf="/">Return Home</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}MyTrackerIndia · Notice{% endblock %}
+
+{% block content %}
+<div id="message-hint-wrapper" style="position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:60;">
+    <div class="message-hint-blur" aria-hidden="true" style="position:absolute;inset:0;border-radius:10px;background:rgba(10,10,10,0.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>
+    <div id="message-hint" role="status" aria-live="polite" style="position:relative;z-index:61;background:rgba(180,16,16,0.96);color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6);max-width:760px;font-size:16px;text-align:center;pointer-events:auto;">
+        <strong style="display:block;margin-bottom:6px;font-weight:700;">Notice</strong>
+        <div style="margin-bottom:6px;">{{ message }}</div>
+        <div aria-hidden="true" style="margin-top:8px;height:6px;background:rgba(255,255,255,0.12);border-radius:6px;overflow:hidden;">
+            <div id="message_progress" style="width:0%;height:100%;background:rgba(255,255,255,0.9);border-radius:6px;transition:width 4s linear;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        try{
+            var wrapper = document.getElementById('message-hint-wrapper');
+            var progress = document.getElementById('message_progress');
+            if(!wrapper) return;
+            // start progress animation
+            setTimeout(function(){ if(progress) progress.style.width = '100%'; }, 20);
+            // remove after progress completes
+            setTimeout(function(){
+                wrapper.style.transition = 'opacity 0.45s ease';
+                wrapper.style.opacity = '0';
+                setTimeout(function(){ if(wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper); }, 500);
+            }, 4050);
+        }catch(e){ /* ignore */ }
+    })();
+</script>
+
+<section class="section toast-supported-grid">
+    <div class="section-head">
+        <div class="section-kicker">Active users</div>
+        <h2 class="section-title">Click through immediately.</h2>
+    </div>
+
+    <div class="result-grid live-grid">
+        {% for user in random_users %}
+            <article class="result-card live-card">
+                <div>
+                    <div class="result-meta">Live profile</div>
+                    <h3 class="result-name"><a href="/user/{{ user.name }}">{{ user.name }}</a></h3>
+                    <div class="result-balance">{{ '%.2f'|format(user.balance / 100) }} INR</div>
+                </div>
+                <a class="back-link" href="/user/{{ user.name }}">Open profile</a>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

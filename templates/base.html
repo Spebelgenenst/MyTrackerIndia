@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MyTrackerIndia{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="site-shell">
+        <header class="topbar">
+            <a class="brand" href="/" aria-label="MyTrackerIndia home page">
+                <span class="brand-mark"></span>
+                <span class="brand-name">MyTrackerIndia</span>
+            </a>
+            <nav class="pill-nav" aria-label="Main navigation">
+                <a href="/" class="pill-link">Home</a>
+                <a href="/search" class="pill-link">Search</a>
+            </nav>
+            <div class="topbar-actions">
+                <a class="button button-light" href="/sign_up">Connect account</a>
+            </div>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

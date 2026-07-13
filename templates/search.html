@@ -1,21 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
-<body>
-    <form action="/search" method="GET">
-        {{ search.user }}
-        <button type="submit" title="submit">submit</button>
-    </form>
-    {% for user in users %}
-        <h3>
-            <a href="/user/{{ user.name }}">{{ user.name }}</a>
-            Balance: {{ user.balance/100 }} inr
-        </h3>
-    {% endfor %}
-    <a href="/sign_up">Sign Up</a> <a herf="/">Return Home</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}MyTrackerIndia · Search{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 24px;">
+    <div class="section-head">
+        <div class="section-kicker">Search</div>
+        <h1 class="section-title">Find MyPayIndia users in the tracker.</h1>
+        <p class="section-copy">Search for a name, check the current status, and open the profile with history.</p>
+    </div>
+
+    {% if search_message %}
+        <div id="search-hint-container" style="position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:60;">
+            <div class="search-hint-blur" aria-hidden="true" style="position:absolute;inset:0;border-radius:10px;background:rgba(10,10,10,0.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>
+            <div id="search-hint" class="search-hint" role="status" aria-live="polite" style="position:relative;z-index:61;background:rgba(180,16,16,0.96);color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.5);max-width:640px;font-size:15px;text-align:center;pointer-events:auto;">
+                <strong style="display:block;margin-bottom:6px;font-weight:700;">Notice</strong>
+                <span>{{ search_message }}</span>
+                <div aria-hidden="true" style="margin-top:10px;height:6px;background:rgba(255,255,255,0.12);border-radius:6px;overflow:hidden;">
+                    <div id="hint_progress" style="width:0%;height:100%;background:rgba(255,255,255,0.9);border-radius:6px;transition:width 4s linear;"></div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function(){
+                try{
+                    var container = document.getElementById('search-hint-container');
+                    var progress = document.getElementById('hint_progress');
+                    if(!container) return;
+                    // start progress animation
+                    setTimeout(function(){ if(progress) progress.style.width = '100%'; }, 20);
+                    // remove after 4s + small buffer
+                    setTimeout(function(){
+                        container.style.transition = 'opacity 0.45s ease';
+                        container.style.opacity = '0';
+                        setTimeout(function(){ if(container && container.parentNode) container.parentNode.removeChild(container); }, 500);
+                    }, 4050);
+                }catch(e){ /* ignore */ }
+            })();
+        </script>
+    {% endif %}
+
+    <div class="search-panel" aria-label="Search">
+        <form action="/search" method="GET">
+            {{ search.user(class_='search-input', placeholder='Enter user, account, or name') }}
+            <button class="button button-light" type="submit">Show matches</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <div class="result-grid">
+            {% for user in users %}
+                <article class="result-card">
+                    <div>
+                        <h2 class="result-name"><a href="/user/{{ user.name }}">{{ user.name }}</a></h2>
+                        <div class="result-meta">Current balance</div>
+                        <div class="result-balance">{{ '%.2f'|format(user.balance / 100) }} INR</div>
+                    </div>
+                    <a class="back-link" href="/user/{{ user.name }}">View details</a>
+                </article>
+            {% else %}
+                {% if not search_message %}
+                    <div class="message-card">
+                        <h2 class="message-title">Start searching</h2>
+                        <p class="message-copy">Once you enter a name, matches with the current balance and profile access will appear here.</p>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
