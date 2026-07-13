@@ -14,7 +14,7 @@ from wtforms.validators import InputRequired, Optional
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = "a secret key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sqlite.db" #database
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # Avoids a warning
@@ -110,8 +110,9 @@ class user_stats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
     balance = db.Column(db.Integer, nullable=False, unique=False)
-    balance_history = db.relationship("user_balance", backref="user_stats", lazy=True, cascade="all, delete-orphan")
+    balance_history = db.relationship("user_balance", backref="user_stats", cascade="all, delete-orphan")
     created_at = db.Column(db.String(32), nullable=True, unique=False)
+    money_made_in_24_hours = db.Column(db.Integer, nullable=True, unique=False)
 
 class user_balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -178,93 +179,59 @@ def get_user(u):
         history_points=build_user_history(user),
     )
 
+@app.route('/leaderboard/total_money')
+def leaderboard_total_money():
+    users = user_stats.query.order_by(user_stats.balance.desc())
+
+    return render_template("leaderboard.html", users=users, sort="total")
+
+@app.route('/leaderboard/made_in_24h')
+def leaderboard_in_24h():
+    users = user_stats.query.order_by(user_stats.money_made_in_24_hours.desc())
+
+    return render_template("leaderboard.html", users=users, sort="in_24h")
+
 @app.route('/sign_up', methods=['GET', 'POST'])
 def get_credentials():
     form = sign_up()
 
     if request.method == 'GET':
-        return render_template("sign-up.html", sign_up=form, random_users=get_random_users())
+        return render_template("sign-up.html", sign_up=form)
 
     if not form.validate_on_submit():
-        return render_template("sign-up.html", sign_up=form, message="Please fill in all required fields.", random_users=get_random_users()), 400
+        return render_template("sign-up.html", sign_up=form, message="You probably made something wrong! Try again! :3")
 
-    try:
-        auth_response = requests.post(
-            BASE_URL + '/auth/login',
-            json={
-                'username': form.name.data,
-                'password': form.password.data,
-                'totp_code': form.auth_code.data,
-            },
-            timeout=12,
-        ).json()
-    except requests.RequestException:
-        return render_template(
-            "sign-up.html",
-            sign_up=form,
-            message="MyPayIndia is currently unreachable.",
-            random_users=get_random_users(),
-        ), 502
+    url = '/auth/login'
+    data = {
+        'username': form.name.data,
+        'password': form.password.data,
+        'totp_code': form.auth_code.data
+    }
 
-    if not auth_response.get("success"):
-        return render_template(
-            "sign-up.html",
-            sign_up=form,
-            message=auth_response.get("message", "Login failed."),
-            random_users=get_random_users(),
-        ), 400
+    response = requests.post(BASE_URL + url, json = data).json()
 
-    session_id = auth_response.get("data", {}).get("session_id")
-    if not session_id:
-        return render_template(
-            "sign-up.html",
-            sign_up=form,
-            message="The session could not be read.",
-            random_users=get_random_users(),
-        ), 502
+    if not response.get("success"):
+        return render_template("sign-up.html", sign_up=form, message=response.get("message"))
 
-    try:
-        user_response = requests.get(
-            BASE_URL + '/user/info',
-            headers={"Authorization": f"Bearer {session_id}"},
-            timeout=12,
-        ).json().get("data")
-    except requests.RequestException:
-        return render_template(
-            "sign-up.html",
-            sign_up=form,
-            message="The user data could not be loaded.",
-            random_users=get_random_users(),
-        ), 502
+    session_id = response.get("data").get("session_id")
 
-    if not user_response:
-        return render_template(
-            "sign-up.html",
-            sign_up=form,
-            message="The user data is missing from the response.",
-            random_users=get_random_users(),
-        ), 502
+    headers = {"Authorization": f"Bearer {session_id}"}
+    url = "/user/info"
+    response = requests.get(BASE_URL + url, headers=headers).json().get("data")
 
-    existing_stat = user_stats.query.filter(user_stats.name == user_response.get("username")).first()
-    if existing_stat:
-        existing_stat.balance = user_response.get("balance")
-        existing_stat.created_at = user_response.get("created")
-    else:
-        db.session.add(user_stats(
-            name=user_response.get("username"),
-            balance=user_response.get("balance"),
-            created_at=user_response.get("created")
-        ))
+    new_credentials = user_credentials(
+        name=response.get("username"),
+        session_id=session_id
+    )
 
-    existing_credentials = user_credentials.query.filter(user_credentials.name == user_response.get("username")).first()
-    if existing_credentials:
-        existing_credentials.session_id = session_id
-    else:
-        db.session.add(user_credentials(
-            name=user_response.get("username"),
-            session_id=session_id
-        ))
+    new_stat = user_stats(
+        name=response.get("username"),
+        balance=response.get("balance"),
+        created_at=response.get("created")
+    )
 
+    db.session.add(new_credentials)
+    db.session.add(new_stat)
     db.session.commit()
 
     return redirect(f"/user/{user_response.get('username')}")
@@ -279,14 +246,11 @@ def page_not_found(_error):
 def internal_error(_error):
     return render_tracker_error("An unexpected error occurred.", 500)
 
-@scheduler.task("interval", minutes=5)
+@scheduler.task("interval", minutes=10)
 def collect_data():
     with app.app_context():
         users = []
-        try:
-            response = requests.get(BASE_URL + "/info/leaderboard", timeout=12).json().get("data")
-        except requests.RequestException:
-            return
+        response = requests.get(BASE_URL + "/info/leaderboard").json().get("data")
 
         if not response or not response.get("success", True):
             if response and response.get("error") == 9003:
@@ -300,11 +264,7 @@ def collect_data():
             headers = {"Authorization": f"Bearer {user.session_id}"}
             url = "/user/info"
 
-            try:
-                response = requests.get(BASE_URL + url, headers=headers, timeout=12).json()
-            except requests.RequestException:
-                continue
-
+            response = requests.get(BASE_URL + url, headers=headers).json()
             data = response.get("data")
 
             if not response.get("success", True):
@@ -338,10 +298,21 @@ def collect_data():
                 db.session.add(user)
                 db.session.commit()
 
+
             new_balance = user_balance(
                 balance=u["balance"],
                 user_id=user.id
             )
+
+            if user.balance_history:
+                # calculate the money made in 2 4hours
+                cutoff = datetime.now() - timedelta(days=1)
+                balance_24h_ago = user_balance.query.filter(user_balance.user_id == user.id and user_balance.timestamp > cutoff).first() 
+                if balance_24h_ago:
+                    user.money_made_in_24_hours = u["balance"] - balance_24h_ago.balance
+
+            else:
+                user.money_made_in_24_hours = 0
 
             db.session.add(new_balance) # add balance to history
             user.balance = u["balance"] # change balance in user stats
@@ -351,4 +322,5 @@ def collect_data():
 if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
-    app.run(debug=True)
+    #collect_data()
+    app.run(debug=False)
