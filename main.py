@@ -236,7 +236,7 @@ def get_credentials():
     db.session.add(new_stat)
     db.session.commit()
 
-    return redirect(f"/user/{user_response.get('username')}")
+    return redirect(f"/user/{response.get('username')}")
 
 @app.route('/privacy')
 def privacy():
