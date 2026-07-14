@@ -12,6 +12,8 @@ from flask_wtf.csrf import CSRFProtect
 from wtforms import StringField, PasswordField
 from wtforms.validators import InputRequired, Optional
 
+import secrets
+
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
@@ -80,7 +82,7 @@ def build_user_development_chart(users, points=8):
         datasets.append({
             "label": user.name,
             "data": [
-                {"x": point_index + 1, "y": entry.balance}
+                {"x": point_index + 1, "y": entry.balance/100}
                 for point_index, entry in enumerate(values)
             ],
             "borderColor": ["#8fd0ff", "#9f8fff", "#ffd08f", "#8ff0c7"][index % 4],
