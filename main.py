@@ -238,6 +238,14 @@ def get_credentials():
 
     return redirect(f"/user/{user_response.get('username')}")
 
+@app.route('/privacy')
+def privacy():
+    return render_template("legal/privacy.html")
+
+@app.route('/terms')
+def terms():
+    return render_template("legal/terms.html")
+
 
 @app.errorhandler(404)
 def page_not_found(_error):
@@ -325,4 +333,4 @@ if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
     #collect_data()
-    app.run(debug=False)
+    app.run(debug=True)
