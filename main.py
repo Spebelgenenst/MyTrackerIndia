@@ -180,17 +180,19 @@ def get_user(u):
         history_points=build_user_history(user),
     )
 
-@app.route('/leaderboard/total_money')
-def leaderboard_total_money():
-    users = user_stats.query.order_by(user_stats.balance.desc())
+@app.route('/leaderboard')
+def leaderboard():
+    sort = request.args.get("sort")
+    if sort == "total":
+        users = user_stats.query.order_by(user_stats.balance.desc())
+    elif sort == "in_24h":
+        users = user_stats.query.order_by(user_stats.money_made_in_24_hours.desc())
+    else:
+        sort = "total"
+        users = user_stats.query.order_by(user_stats.balance.desc())
+    
 
-    return render_template("leaderboard.html", users=users, sort="total")
-
-@app.route('/leaderboard/made_in_24h')
-def leaderboard_in_24h():
-    users = user_stats.query.order_by(user_stats.money_made_in_24_hours.desc())
-
-    return render_template("leaderboard.html", users=users, sort="in_24h")
+    return render_template("leaderboard.html", users=users, sort=sort)
 
 @app.route('/sign_up', methods=['GET', 'POST'])
 def get_credentials():

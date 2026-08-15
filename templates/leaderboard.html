@@ -1,23 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTrackerIndia</title>
-</head>
-<body>
-    {% for user in users %}
-        <h3>
-            <a href="/user/{{ user.name }}">{{ user.name }}</a>
-            {% if sort == "total" %}
-                Balance: {{ user.balance/100 }} inr
-            {% endif %}
+{% extends "base.html" %}
 
-            {% if sort == "in_24h" %}
-                Money made in 24 hours: {{ user.money_made_in_24_hours/100 }} inr
-            {% endif %}
-        </h3>
-    {% endfor %}
-    <a href="/sign_up">Sign Up</a> <a herf="/">Return Home</a>
-</body>
-</html>
+{% block title %}MyTrackerIndia · Leaderboard{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 24px;">
+    <div class="section-head">
+        <div class="section-kicker">Leaderboard</div>
+        <h1 class="section-title">
+            Top users by {% if sort == "in_24h" %}24h earnings{% else %}total balance{% endif %}.
+        </h1>
+        <p class="section-copy">
+            {% if sort == "in_24h" %}Ranked by money made in the last 24 hours.{% else %}Ranked by current balance.{% endif %}
+        </p>
+    </div>
+
+    <div class="search-panel" style="width: min(520px, 100%); margin: 34px auto 0;">
+        <a href="/leaderboard?sort=total" class="button {% if sort == 'total' %}button-light{% else %}button-dark{% endif %}" style="flex: 1; text-align: center;">By Total Balance</a>
+        <a href="/leaderboard?sort=in_24h" class="button {% if sort == 'in_24h' %}button-light{% else %}button-dark{% endif %}" style="flex: 1; text-align: center;">By 24h Earnings</a>
+    </div>
+
+    <div class="result-grid">
+        {% for user in users %}
+            <article class="result-card">
+                <div>
+                    <h2 class="result-name"><a href="/user/{{ user.name }}">{{ user.name }}</a></h2>
+                    {% if sort == "total" %}
+                        <div class="result-meta">Current balance</div>
+                        <div class="result-balance">{{ '%.2f'|format(user.balance / 100) }} INR</div>
+                    {% endif %}
+                    {% if sort == "in_24h" %}
+                        <div class="result-meta">Money made in 24 hours</div>
+                        <div class="result-balance">{{ '%.2f'|format(user.money_made_in_24_hours / 100) }} INR</div>
+                    {% endif %}
+                </div>
+                <a class="back-link" href="/user/{{ user.name }}">View profile</a>
+            </article>
+        {% else %}
+            <div class="message-card">
+                <h2 class="message-title">No users yet.</h2>
+                <p class="message-copy">As soon as users connect their accounts, the leaderboard will appear here.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 32px; text-align: center;">
+        <a class="back-link" href="/">Return home</a>
+    </div>
+</section>
+{% endblock %}
