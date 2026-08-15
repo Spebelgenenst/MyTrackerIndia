@@ -42,11 +42,27 @@
         </article>
 
         <article class="chart-panel">
-            <div class="feature-kicker">Trend</div>
-            <h3 class="feature-title">Balance trends for active users.</h3>
-            <p class="feature-copy">Each point represents a stored history entry. The lines show how the accounts have recently developed.</p>
-            <div class="chart-shell chart-shell-compact">
-                <canvas id="development_chart"></canvas>
+            <div class="chart-header-row">
+                <div>
+                    <div class="feature-kicker">History</div>
+                    <h3 class="feature-title">Trend</h3>
+                </div>
+                <div class="chart-toggle" role="tablist" aria-label="Switch chart type">
+                    <button class="chart-toggle-btn is-active" type="button" data-chart-toggle="balance" aria-pressed="true">Balance over time</button>
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="rate" aria-pressed="false">INR/min</button>
+                </div>
+            </div>
+            <p class="panel-meta chart-panel-copy">Use the zoom buttons to choose how many points are shown. The chart switches between balance and change rate.</p>
+            <div class="chart-shell chart-shell-with-controls">
+                <div class="chart-overlay" aria-label="Control zoom">
+                    <button class="map-zoom-btn" type="button" id="zoom_in" aria-label="Zoom in">+</button>
+                    <button class="map-zoom-btn" type="button" id="zoom_out" aria-label="Zoom out">-</button>
+                </div>
+                <canvas id="user_chart"></canvas>
+            </div>
+            <div class="chart-zoom-note">
+                <span class="map-zoom-label">Zoom</span>
+                <span id="chart_zoom_value">{{ history_points|length }} points</span>
             </div>
         </article>
     </div>
@@ -111,47 +127,141 @@
 </footer>
 
 <script>
-    const developmentCanvas = document.getElementById('development_chart');
+    const historyPoints = {{ history_points | tojson }};
+    const chartCanvas = document.getElementById('user_chart');
+    const zoomLabel = document.getElementById('chart_zoom_value');
+    const zoomInButton = document.getElementById('zoom_in');
+    const zoomOutButton = document.getElementById('zoom_out');
+    const chartButtons = document.querySelectorAll('[data-chart-toggle]');
 
-    new Chart(developmentCanvas, {
-        type: 'line',
-        data: {
-            datasets: {{ development_chart | tojson }}
-        },
-        options: {
+    let activeMode = 'balance';
+    let visibleCount = historyPoints.length;
+    let userChart;
+
+    const minVisible = historyPoints.length <= 2 ? historyPoints.length : 2;
+    const zoomStep = Math.max(1, Math.ceil(historyPoints.length / 4));
+
+    function getVisiblePoints() {
+        return historyPoints.slice(-visibleCount);
+    }
+
+    function buildChartData() {
+        const visible = getVisiblePoints();
+        const labels = visible.map(point => point.timestamp);
+
+        if (activeMode === 'rate') {
+            return {
+                labels,
+                datasets: [{
+                    label: 'INR/min',
+                    data: visible.map(point => point.delta_per_minute),
+                    borderColor: '#ffd08f',
+                    backgroundColor: 'rgba(255, 208, 143, 0.16)',
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    tension: 0.35,
+                    fill: true,
+                }]
+            };
+        }
+
+        return {
+            labels,
+            datasets: [{
+                label: 'Balance INR',
+                data: visible.map(point => point.balance_inr),
+                borderColor: '#8fd0ff',
+                backgroundColor: 'rgba(143, 208, 255, 0.18)',
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                tension: 0.35,
+                fill: true,
+            }]
+        };
+    }
+
+    function buildOptions() {
+        return {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
                 x: {
                     grid: { color: 'rgba(255, 255, 255, 0.06)' },
-                    ticks: { color: 'rgba(245, 242, 235, 0.65)' },
-                    title: {
-                        display: true,
-                        text: 'Recent history points',
-                        color: '#f5f2eb'
-                    }
+                    ticks: { color: 'rgba(245, 242, 235, 0.65)' }
                 },
                 y: {
                     grid: { color: 'rgba(255, 255, 255, 0.06)' },
                     ticks: {
                         color: 'rgba(245, 242, 235, 0.65)',
-                        callback: value => (value / 100).toFixed(2) + ' INR'
+                        callback: value => activeMode === 'rate' ? value.toFixed(2) + ' INR/min' : value.toFixed(2) + ' INR'
                     }
                 }
             },
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#f5f2eb' }
-                },
+                legend: { display: false },
                 title: {
                     display: true,
-                    text: 'User trend',
+                    text: activeMode === 'rate' ? 'INR per minute' : 'Balance over time',
                     color: '#f5f2eb',
                     font: { family: 'Manrope', size: 16, weight: '700' }
                 }
             }
+        };
+    }
+
+    function renderChart() {
+        const chartData = buildChartData();
+
+        if (userChart) {
+            userChart.data = chartData;
+            userChart.options = buildOptions();
+            userChart.update();
+            return;
         }
+
+        userChart = new Chart(chartCanvas, {
+            type: 'line',
+            data: chartData,
+            options: buildOptions(),
+        });
+    }
+
+    function updateZoomLabels() {
+        zoomLabel.textContent = `${visibleCount} points`;
+        zoomOutButton.disabled = visibleCount >= historyPoints.length;
+        zoomInButton.disabled = visibleCount <= minVisible;
+        zoomOutButton.classList.toggle('is-disabled', zoomOutButton.disabled);
+        zoomInButton.classList.toggle('is-disabled', zoomInButton.disabled);
+    }
+
+    function zoomIn() {
+        visibleCount = Math.max(minVisible, visibleCount - zoomStep);
+        updateZoomLabels();
+        renderChart();
+    }
+
+    function zoomOut() {
+        visibleCount = Math.min(historyPoints.length, visibleCount + zoomStep);
+        updateZoomLabels();
+        renderChart();
+    }
+
+    chartButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            activeMode = button.dataset.chartToggle;
+            chartButtons.forEach(entry => {
+                const isActive = entry === button;
+                entry.classList.toggle('is-active', isActive);
+                entry.setAttribute('aria-pressed', String(isActive));
+            });
+            renderChart();
+        });
     });
+
+    zoomInButton.addEventListener('click', zoomIn);
+    zoomOutButton.addEventListener('click', zoomOut);
+
+    updateZoomLabels();
+    renderChart();
 </script>
 {% endblock %}

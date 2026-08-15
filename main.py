@@ -71,30 +71,6 @@ def build_user_history(user):
     return points
 
 
-def build_user_development_chart(users, points=8):
-    datasets = []
-
-    for index, user in enumerate(users):
-        history = sorted(user.balance_history, key=lambda entry: entry.id)[-points:]
-        values = history or [user]
-
-        datasets.append({
-            "label": user.name,
-            "data": [
-                {"x": point_index + 1, "y": entry.balance/100}
-                for point_index, entry in enumerate(values)
-            ],
-            "borderColor": ["#8fd0ff", "#9f8fff", "#ffd08f", "#8ff0c7"][index % 4],
-            "backgroundColor": "rgba(143, 208, 255, 0.10)",
-            "tension": 0.35,
-            "fill": False,
-            "pointRadius": 2,
-            "pointHoverRadius": 4,
-        })
-
-    return datasets
-
-
 def render_tracker_error(message, status_code=404):
     return render_template(
         "message.html",
@@ -133,10 +109,12 @@ class sign_up(FlaskForm):
 @app.route('/')
 def index():
     live_users = get_random_users(4)
+    random_user = user_stats.query.order_by(db.func.random()).first()
+    user_history = build_user_history(random_user) if random_user else []
     return render_template(
         "index.html",
         random_users=live_users,
-        development_chart=build_user_development_chart(live_users),
+        history_points=user_history
     )
 
 @app.route('/search')
